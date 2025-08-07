@@ -16,10 +16,6 @@ A modern, interactive code playground built with React - bringing the CodePen ex
 - **💾 Local Storage** - Your code persists between sessions
 - **🚀 Fast Rendering** - Optimized for performance and smooth experience
 
-## 🎯 Demo
-
-*Add screenshots or gif demos of your application here*
-
 ## 🛠️ Built With
 
 - **React** - Frontend framework for building user interfaces
