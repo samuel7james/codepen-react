@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-labelledby="logoTitle">
+  <title id="logoTitle">CodePen React logo</title>
+  <g fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">
+    <!-- outer hexagon: isometric cube outline, in the spirit of CodePen's mark -->
+    <polygon points="100,8 180,54 180,146 100,192 20,146 20,54" />
+    <!-- three facets meeting at the centroid, giving the folded-cube look -->
+    <path d="M100 100 L100 8 M100 100 L180 54 M100 100 L180 146 M100 100 L100 192 M100 100 L20 146 M100 100 L20 54" />
+  </g>
+</svg>

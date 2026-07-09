@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import "codemirror/lib/codemirror.css";
 import "codemirror/theme/material.css";
 import "codemirror/mode/xml/xml";
@@ -6,24 +6,37 @@ import "codemirror/mode/javascript/javascript";
 import "codemirror/mode/css/css";
 import { Controlled as ControlledEditor } from "react-codemirror2";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCompressAlt, faExpandAlt } from "@fortawesome/free-solid-svg-icons";
+import { faCompressAlt, faExpandAlt } from "../icons";
 
-export default function Editor(props) {
-  const { language, displayName, value, onChange } = props;
+const EDITOR_OPTIONS = {
+  lineWrapping: true,
+  lint: true,
+  theme: "material",
+  lineNumbers: true,
+};
+
+function Editor({ language, displayName, value, onChange, accent }) {
   const [open, setOpen] = useState(true);
 
-  function handleChange(editor, data, value) {
-    onChange(value);
-  }
+  const handleChange = useCallback(
+    (editor, data, newValue) => {
+      onChange(newValue);
+    },
+    [onChange]
+  );
+
+  const toggleOpen = useCallback(() => setOpen((prevOpen) => !prevOpen), []);
 
   return (
-    <div className={`editor-container ${open ? "" : "collapsed"}`}>
+    <div className={`editor-container editor-container--${accent} ${open ? "" : "collapsed"}`}>
       <div className="editor-title">
         {displayName}
         <button
           type="button"
           className="expand-collapse-btn"
-          onClick={() => setOpen((prevOpen) => !prevOpen)}
+          onClick={toggleOpen}
+          aria-label={open ? `Collapse ${displayName} editor` : `Expand ${displayName} editor`}
+          aria-expanded={open}
         >
           <FontAwesomeIcon icon={open ? faCompressAlt : faExpandAlt} />
         </button>
@@ -32,14 +45,10 @@ export default function Editor(props) {
         onBeforeChange={handleChange}
         value={value}
         className="code-mirror-wrapper"
-        options={{
-          lineWrapping: true,
-          lint: true,
-          mode: language,
-          theme: "material",
-          lineNumbers: true,
-        }}
+        options={{ ...EDITOR_OPTIONS, mode: language }}
       />
     </div>
   );
 }
+
+export default React.memo(Editor);
