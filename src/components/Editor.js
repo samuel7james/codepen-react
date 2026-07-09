@@ -1,51 +1,43 @@
-import React, { useCallback, useState } from "react";
-import "codemirror/lib/codemirror.css";
-import "codemirror/theme/material.css";
-import "codemirror/mode/xml/xml";
-import "codemirror/mode/javascript/javascript";
-import "codemirror/mode/css/css";
-import { Controlled as ControlledEditor } from "react-codemirror2";
+import React from "react";
+import CodeMirror from "@uiw/react-codemirror";
+import { html } from "@codemirror/lang-html";
+import { css } from "@codemirror/lang-css";
+import { javascript } from "@codemirror/lang-javascript";
+import { materialDark } from "@uiw/codemirror-theme-material";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCompressAlt, faExpandAlt } from "../icons";
 
-const EDITOR_OPTIONS = {
-  lineWrapping: true,
-  lint: true,
-  theme: "material",
-  lineNumbers: true,
+// basicSetup (on by default) already covers line numbers, undo/redo,
+// bracket matching, and the search/multi-cursor keymaps (Mod-f, Mod-d,
+// Alt+click) -- no custom keymap wiring needed for those.
+const LANGUAGE_EXTENSIONS = {
+  html: [html()],
+  css: [css()],
+  javascript: [javascript()],
 };
 
-function Editor({ language, displayName, value, onChange, accent }) {
-  const [open, setOpen] = useState(true);
-
-  const handleChange = useCallback(
-    (editor, data, newValue) => {
-      onChange(newValue);
-    },
-    [onChange]
-  );
-
-  const toggleOpen = useCallback(() => setOpen((prevOpen) => !prevOpen), []);
-
+function Editor({ id, language, displayName, value, onChange, accent, collapsed, onToggleCollapse }) {
   return (
-    <div className={`editor-container editor-container--${accent} ${open ? "" : "collapsed"}`}>
+    <div className={`editor-container editor-container--${accent} ${collapsed ? "collapsed" : ""}`}>
       <div className="editor-title">
-        {displayName}
+        <span className="editor-title-label">{displayName}</span>
         <button
           type="button"
           className="expand-collapse-btn"
-          onClick={toggleOpen}
-          aria-label={open ? `Collapse ${displayName} editor` : `Expand ${displayName} editor`}
-          aria-expanded={open}
+          onClick={() => onToggleCollapse(id)}
+          aria-label={collapsed ? `Expand ${displayName} editor` : `Collapse ${displayName} editor`}
+          aria-expanded={!collapsed}
         >
-          <FontAwesomeIcon icon={open ? faCompressAlt : faExpandAlt} />
+          <FontAwesomeIcon icon={collapsed ? faExpandAlt : faCompressAlt} />
         </button>
       </div>
-      <ControlledEditor
-        onBeforeChange={handleChange}
+      <CodeMirror
         value={value}
+        onChange={onChange}
+        theme={materialDark}
+        extensions={LANGUAGE_EXTENSIONS[language]}
+        height="100%"
         className="code-mirror-wrapper"
-        options={{ ...EDITOR_OPTIONS, mode: language }}
       />
     </div>
   );

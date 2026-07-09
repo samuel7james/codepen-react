@@ -23,14 +23,23 @@ body,
   height: 100%;
 }
 
+html {
+  /* Cheap insurance against any future editor/library quirk that tries
+     to render off-canvas content -- never allow page-level horizontal
+     scroll regardless of what's happening inside a nested container. */
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-x: hidden;
 }
 
 #root {
   display: flex;
   flex-direction: column;
+  min-height: 100%;
 }
 
 /* ---------- Header ---------- */
@@ -125,6 +134,16 @@ body {
   transform: translateY(0);
 }
 
+.shortcut-hint {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.7rem;
+  background: hsl(225, 6%, 12%);
+  border: 1px solid hsl(225, 6%, 32%);
+  border-radius: 0.3rem;
+  padding: 0.05rem 0.35rem;
+  color: #b7bac2;
+}
+
 /* ---------- Playground layout ---------- */
 
 .playground {
@@ -158,16 +177,76 @@ body {
   display: block;
 }
 
+/* ---------- Resizable panels (desktop, >=760px) ---------- */
+
+.resizable-outer-group,
+.resizable-editor-group,
+.resizable-bottom-group {
+  height: 100%;
+  width: 100%;
+}
+
+.resizable-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* react-resizable-panels sets flex-grow/flex-basis inline on this
+   attribute as layout changes. Transition it so collapse/expand/reset
+   snap smoothly -- but suppress the transition during an active drag
+   (see the .is-resizing class, toggled from a pointerdown on the
+   Separator) so it doesn't fight 1:1 pointer tracking with a laggy tail. */
+[data-panel] {
+  transition: flex 0.2s ease;
+}
+
+.is-resizing [data-panel] {
+  transition: none;
+}
+
+.resize-handle {
+  flex-shrink: 0;
+  background: hsl(225, 6%, 20%);
+  position: relative;
+  transition: background-color 0.15s ease;
+}
+
+.resize-handle:hover,
+.resize-handle:focus-visible {
+  background: var(--accent-css);
+  outline: none;
+}
+
+.resize-handle--vertical {
+  width: 4px;
+  cursor: col-resize;
+}
+
+.resize-handle--horizontal {
+  height: 4px;
+  cursor: row-resize;
+}
+
 /* ---------- Editors ---------- */
 
 .editor-container {
   flex-grow: 1;
   flex-basis: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   padding: 0.5rem;
   background-color: var(--bg-panel);
   border-top: 3px solid transparent;
+  overflow: hidden;
+  /* Only meaningful on mobile, where collapse toggles a fixed height
+     (see the 760px breakpoint) -- inert on desktop since the outer
+     resizable Panel owns sizing there and this stays 100% always. */
+  transition: height 0.2s ease;
 }
 
 .editor-container--html {
@@ -182,16 +261,18 @@ body {
   border-top-color: var(--accent-js);
 }
 
-.editor-container.collapsed {
-  flex-grow: 0;
-}
-
-.editor-container.collapsed .CodeMirror-scroll {
-  position: absolute;
-  overflow: hidden !important;
+/* On desktop, the outer resizable Panel already owns the collapsed
+   width via collapsedSize -- editor-container should stay flex-grow:1
+   so it still fills the panel's full (now-narrow) height. Only the
+   mobile stacked layout (where editor-container is the thing being
+   sized directly, see the 760px breakpoint below) needs its own
+   flex-grow reset. */
+.editor-container.collapsed .code-mirror-wrapper {
+  display: none;
 }
 
 .expand-collapse-btn {
+  flex-shrink: 0;
   margin-left: 0.5rem;
   background: none;
   border: none;
@@ -201,7 +282,9 @@ body {
 
 .editor-title {
   display: flex;
+  align-items: center;
   justify-content: space-between;
+  gap: 0.4rem;
   background-color: var(--bg-panel-dark);
   color: white;
   padding: 0.5rem 0.5rem 0.5rem 1rem;
@@ -209,15 +292,30 @@ body {
   border-top-left-radius: 0.5rem;
 }
 
-.CodeMirror {
-  height: 100% !important;
+.editor-title-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .code-mirror-wrapper {
   flex-grow: 1;
+  min-height: 0;
   border-bottom-right-radius: 0.5rem;
   border-bottom-left-radius: 0.5rem;
   overflow: hidden;
+}
+
+.code-mirror-wrapper .cm-editor {
+  height: 100%;
+  border-bottom-right-radius: 0.5rem;
+  border-bottom-left-radius: 0.5rem;
+}
+
+.code-mirror-wrapper .cm-scroller {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
 /* ---------- Console ---------- */
@@ -280,6 +378,18 @@ body {
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   white-space: pre-wrap;
   word-break: break-word;
+  animation: consoleLineIn 0.15s ease-out;
+}
+
+@keyframes consoleLineIn {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .console-error {
@@ -292,6 +402,181 @@ body {
 
 .console-info {
   color: var(--console-info);
+}
+
+/* ---------- Command palette (cmdk) ---------- */
+
+[cmdk-overlay] {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 12, 0.6);
+  backdrop-filter: blur(2px);
+  z-index: 100;
+}
+
+/* Radix keeps the overlay/content mounted while data-state="closed" is
+   animating, and only removes them from the DOM once the animation
+   finishes -- this is what makes the closing transition possible at
+   all, so both directions are keyed off that attribute rather than a
+   single animation applied once on mount. */
+[cmdk-overlay][data-state="open"] {
+  animation: paletteFadeIn 0.12s ease-out;
+}
+
+[cmdk-overlay][data-state="closed"] {
+  animation: paletteFadeOut 0.1s ease-in forwards;
+}
+
+.command-palette-content {
+  position: fixed;
+  top: 12vh;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(560px, calc(100vw - 2rem));
+  max-height: min(420px, 70vh);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel-dark);
+  border: 1px solid hsl(225, 6%, 26%);
+  border-radius: 0.6rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  z-index: 101;
+}
+
+.command-palette-content[data-state="open"] {
+  animation: paletteSlideIn 0.14s ease-out;
+}
+
+.command-palette-content[data-state="closed"] {
+  animation: paletteSlideOut 0.1s ease-in forwards;
+}
+
+[cmdk-root] {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+@keyframes paletteFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes paletteFadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes paletteSlideIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes paletteSlideOut {
+  from {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+}
+
+[cmdk-input] {
+  flex-shrink: 0;
+  width: 100%;
+  padding: 0.9rem 1rem;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid hsl(225, 6%, 24%);
+  color: var(--text-light);
+  font-size: 0.95rem;
+  outline: none;
+}
+
+[cmdk-input]::placeholder {
+  color: #777c88;
+}
+
+[cmdk-list] {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.4rem;
+  scrollbar-width: thin;
+  scrollbar-color: hsl(225, 6%, 38%) transparent;
+}
+
+[cmdk-list]::-webkit-scrollbar {
+  width: 8px;
+}
+
+[cmdk-list]::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[cmdk-list]::-webkit-scrollbar-thumb {
+  background-color: hsl(225, 6%, 38%);
+  border-radius: 999px;
+}
+
+[cmdk-list]::-webkit-scrollbar-thumb:hover {
+  background-color: var(--accent-css);
+}
+
+[cmdk-empty] {
+  padding: 1.5rem 1rem;
+  text-align: center;
+  color: #8a8f9c;
+  font-size: 0.9rem;
+}
+
+[cmdk-group-heading] {
+  padding: 0.5rem 0.6rem 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #777c88;
+}
+
+[cmdk-item] {
+  display: flex;
+  align-items: center;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.4rem;
+  color: var(--text-light);
+  font-size: 0.9rem;
+  cursor: pointer;
+  scroll-margin: 0.4rem;
+  transition: background-color 0.1s ease, color 0.1s ease;
+}
+
+[cmdk-item][data-selected="true"] {
+  background: var(--accent-css);
+  color: #0e1116;
+}
+
+[cmdk-item][aria-disabled="true"] {
+  opacity: 0.4;
+  cursor: default;
 }
 
 /* ---------- Error boundary ---------- */
@@ -321,21 +606,190 @@ body {
 
 /* ---------- Responsive ---------- */
 
-@media (max-width: 800px) {
-  .top-pane {
-    flex-direction: column;
+/* Tablets / small laptops: the resizable panel layout is already fluid,
+   just tighten header spacing so nothing feels cramped. */
+@media (max-width: 1024px) {
+  .app-header {
+    padding: 0.5rem 0.75rem;
+  }
+}
+
+/* Phones and narrow tablets in portrait: a fixed-height split no longer
+   fits real content, so switch to a normal scrolling document with each
+   pane given a comfortable minimum height instead of an equal fraction
+   of the viewport. Resizable panels are desktop-only (see useIsDesktop
+   in App.js) -- this breakpoint's plain-CSS layout is untouched by them. */
+@media (max-width: 760px) {
+  html,
+  body,
+  #root {
+    height: auto;
+    min-height: 100%;
   }
 
+  .playground {
+    flex: none;
+  }
+
+  .pane {
+    flex: none;
+    min-height: 0;
+  }
+
+  .top-pane,
   .bottom-pane {
     flex-direction: column;
   }
 
-  .editor-container,
+  .editor-container {
+    /* An explicit height (not min-height) is required here: with the
+       ancestor chain now height:auto, CodeMirror's own 100%-height theme
+       has nothing definite to resolve against and would otherwise render
+       every line unclipped instead of a scrollable viewport. */
+    flex: none;
+    height: 260px;
+  }
+
   .editor-container.collapsed {
-    flex-basis: auto;
+    flex-grow: 0;
+    height: 44px;
+  }
+
+  .preview-pane {
+    flex: none;
+    height: 45vh;
+    min-height: 280px;
+  }
+
+  .console-pane {
+    flex: none;
+    height: 240px;
+    border-left: none;
+    border-top: 2px solid #000;
+  }
+
+  .bottom-pane {
+    gap: 0;
+  }
+}
+
+/* Small phones: reclaim header space by dropping button text (icons +
+   aria-label/title keep them usable and accessible) and trimming type. */
+@media (max-width: 480px) {
+  .app-header {
+    padding: 0.5rem 0.6rem;
+  }
+
+  .brand-name {
+    font-size: 0.95rem;
+  }
+
+  .live-badge {
+    display: none;
+  }
+
+  .header-btn {
+    padding: 0.45rem 0.6rem;
+  }
+
+  .btn-label,
+  .shortcut-hint {
+    display: none;
+  }
+
+  .editor-title {
+    font-size: 0.9rem;
+    padding: 0.4rem 0.4rem 0.4rem 0.75rem;
+  }
+
+  .editor-container {
+    height: 220px;
+  }
+
+  .command-palette-content {
+    top: 6vh;
+  }
+}
+
+/* Landscape phones are short but wide enough for the desktop row
+   layout -- a height-based split there would leave almost nothing to
+   work with, so keep panes side-by-side and just shrink chrome. Still
+   below the 760px resizable-panel breakpoint, so this is the plain-CSS
+   mobile tree in a row orientation, not the drag-resize layout. */
+@media (max-height: 480px) and (orientation: landscape) {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  .playground {
+    flex: 1;
   }
 
   .pane {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .top-pane,
+  .bottom-pane {
+    flex-direction: row;
+  }
+
+  .editor-container {
+    flex: 1 1 0;
     height: auto;
+    min-height: 0;
+  }
+
+  /* Row layout here (like desktop), not the stacked-column layout the
+     44px collapsed height (set at the 760px breakpoint) was designed
+     for -- revert to auto so a collapsed editor still stretches full
+     height and just stops growing in width, instead of squashing flat. */
+  .editor-container.collapsed {
+    height: auto;
+  }
+
+  .preview-pane,
+  .console-pane {
+    flex: 1;
+    height: auto;
+  }
+
+  .console-pane {
+    border-left: 2px solid #000;
+    border-top: none;
+  }
+
+  .app-header {
+    padding: 0.35rem 0.6rem;
+  }
+
+  .live-badge {
+    display: none;
+  }
+}
+
+/* Notched devices: keep header content clear of the sensor housing /
+   home-indicator safe areas. */
+@supports (padding: max(0px)) {
+  .app-header {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}
+
+/* Respect the user's OS-level motion preference: collapse every
+   animation/transition in the app down to effectively instant instead
+   of skipping them individually. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }

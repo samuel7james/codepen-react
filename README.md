@@ -12,23 +12,40 @@ A fast, in-browser HTML/CSS/JS playground inspired by [CodePen](https://codepen.
 ## ✨ Features
 
 - **🔴 Live preview** — edits are debounced and rendered in a sandboxed `<iframe>` within ~250ms
-- **📝 Three editors** — HTML, CSS and JavaScript, each collapsible and color-coded
-- **🎨 Syntax highlighting & linting** — powered by CodeMirror
+- **📝 Three editors** — HTML, CSS and JavaScript, powered by CodeMirror 6 with real search/replace (`Ctrl/Cmd+F`), multi-cursor (`Alt`+click, `Ctrl/Cmd+D`), and undo/redo built in
+- **🖱️ Resizable panels** — drag any divider to resize (desktop/tablet, ≥760px); layouts persist across reloads, and double-clicking a divider resets it
+- **⌘ Command palette** — `Ctrl/Cmd+K` opens a searchable list of every action (reset, format, toggle panels, clear console, open repo) — see the Keyboard Shortcuts section below
+- **🪄 Format Document** — one-click Prettier formatting per language or all at once; Prettier itself is only downloaded the first time you use it (code-split, not in the initial bundle)
 - **🖥️ Console panel** — `console.log/info/warn/error` calls from your pen are captured and displayed live, without polluting the host page's own console
 - **🎉 Seeded demo pen** — first-time visitors see a real, working pen (animated SVG checkbox toggles) instead of a blank screen, and can jump back to it any time with **Reset**
 - **💾 Local persistence** — your HTML/CSS/JS is saved to `localStorage` and restored on reload
-- **📱 Responsive layout** — editors and preview/console panes stack vertically on small screens
+- **📱 Responsive layout** — resizable panels on desktop/tablet; below 760px, editors and preview/console stack into a normal scrolling page instead
 - **🛡️ Sandboxed execution** — the preview iframe runs with `sandbox="allow-scripts"` only (no `allow-same-origin`), so pen code can't reach the parent page, cookies, or local storage
-- **♿ Accessible controls** — icon-only buttons carry `aria-label`s, and the expand/collapse state is exposed via `aria-expanded`
+- **♿ Accessible controls** — icon-only buttons carry `aria-label`s, panel expand/collapse state is exposed via `aria-expanded`, and the command palette traps focus and closes on `Escape`
 - **🧯 Error boundary** — a rendering crash shows a recoverable error screen instead of a blank app
+
+## ⌨️ Keyboard Shortcuts
+
+| Shortcut | Action |
+| - | - |
+| `Ctrl/Cmd+K` | Open the command palette |
+| `Ctrl/Cmd+Alt+H` / `+C` / `+J` | Toggle the HTML / CSS / JS panel |
+| `Ctrl/Cmd+Alt+F` | Format all three editors |
+| `Ctrl/Cmd+F` (editor focused) | Find / replace |
+| `Ctrl/Cmd+D` (editor focused) | Select next occurrence (multi-cursor) |
+| `Alt`+click (editor focused) | Add a cursor |
+| `Ctrl/Cmd+Z` / `Ctrl/Cmd+Shift+Z` | Undo / redo |
 
 ## 🛠️ Built With
 
 - **[React 18](https://react.dev/)** — UI layer, rendered via `createRoot`
-- **[CodeMirror 5](https://codemirror.net/5/)** via `react-codemirror2` — the code editors
+- **[CodeMirror 6](https://codemirror.net/)** via `@uiw/react-codemirror` — the code editors, with `@codemirror/lang-*` for syntax and `@codemirror/commands`/`@codemirror/search` for editing/search keymaps
+- **[react-resizable-panels](https://github.com/bvaughn/react-resizable-panels)** — drag-to-resize layout with persisted sizing
+- **[cmdk](https://cmdk.paco.me/)** — the command palette
+- **[Prettier](https://prettier.io/)** (standalone, dynamically imported) — Format Document
 - **[Font Awesome 6](https://fontawesome.com/)** — icons
 - **Create React App / `react-scripts`** — build tooling
-- Custom `useLocalStorage` hook for persistence and a `postMessage`-based bridge for the console panel
+- Custom `useLocalStorage` hook for persistence, `useIsDesktop` for the resizable/stacked layout switch, and a `postMessage`-based bridge for the console panel
 
 ## 🚀 Getting Started
 
@@ -81,16 +98,20 @@ A fast, in-browser HTML/CSS/JS playground inspired by [CodePen](https://codepen.
 
 ## 🎮 Usage
 
-- **HTML / CSS / JS panels** — edit freely; use the corner button to collapse a panel you're not focused on
+- **HTML / CSS / JS panels** — edit freely; use the corner button (or `Ctrl/Cmd+Alt+H/C/J`) to collapse a panel you're not focused on
+- **Drag to resize** — on desktop/tablet, drag any divider between panels; double-click a divider to reset it to its default size
+- **Command palette** — `Ctrl/Cmd+K` for reset, format, panel toggles, clearing the console, or jumping to the repo
 - **Preview pane** — see your pen rendered live
 - **Console pane** — inspect `console.*` output from your pen, or clear it with the trash icon
 - **Reset** — restores the original demo pen (with a confirmation, since it overwrites your saved code)
 
 ## 🔧 Customization
 
-- Swap the CodeMirror theme in [Editor.js](src/components/Editor.js) (`theme: "material"`)
+- Swap the CodeMirror theme in [Editor.js](src/components/Editor.js) (`materialDark` from `@uiw/codemirror-theme-material`)
 - Change the seeded first-run pen in [demoPen.js](src/demoPen.js)
 - Adjust the debounce delay or captured log limit via `COMPILE_DELAY` / `MAX_LOGS` in [App.js](src/components/App.js)
+- Adjust panel min/collapsed sizes on the `<Panel>` elements in [App.js](src/components/App.js), or the resizable/stacked breakpoint via `DESKTOP_BREAKPOINT`
+- Add or change command palette actions in [CommandPalette.js](src/components/CommandPalette.js)
 - Re-theme accent colors (HTML/CSS/JS) via the CSS custom properties at the top of [index.css](src/index.css)
 
 ## 🤝 Contributing

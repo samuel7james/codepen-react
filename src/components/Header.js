@@ -1,8 +1,10 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowRotateLeft, faGithub } from "../icons";
+import { faArrowRotateLeft, faGithub, faMagnifyingGlass } from "../icons";
 
-function Header({ onReset }) {
+const MOD_KEY = navigator.platform?.toUpperCase().includes("MAC") ? "⌘" : "Ctrl";
+
+function Header({ onReset, onOpenPalette }) {
   return (
     <header className="app-header">
       <div className="brand">
@@ -13,8 +15,25 @@ function Header({ onReset }) {
         </span>
       </div>
       <div className="header-actions">
-        <button type="button" className="header-btn" onClick={onReset} title="Reset to the demo pen">
-          <FontAwesomeIcon icon={faArrowRotateLeft} /> Reset
+        <button
+          type="button"
+          className="header-btn command-palette-trigger"
+          onClick={onOpenPalette}
+          title={`Command palette (${MOD_KEY}+K)`}
+          aria-label="Open command palette"
+        >
+          <FontAwesomeIcon icon={faMagnifyingGlass} />
+          <span className="btn-label">Commands</span>
+          <kbd className="shortcut-hint">{MOD_KEY}K</kbd>
+        </button>
+        <button
+          type="button"
+          className="header-btn"
+          onClick={onReset}
+          title="Reset to the demo pen"
+          aria-label="Reset to the demo pen"
+        >
+          <FontAwesomeIcon icon={faArrowRotateLeft} /> <span className="btn-label">Reset</span>
         </button>
         <a
           className="header-btn"
@@ -22,8 +41,9 @@ function Header({ onReset }) {
           target="_blank"
           rel="noreferrer"
           title="View source on GitHub"
+          aria-label="View source on GitHub"
         >
-          <FontAwesomeIcon icon={faGithub} /> GitHub
+          <FontAwesomeIcon icon={faGithub} /> <span className="btn-label">GitHub</span>
         </a>
       </div>
     </header>
